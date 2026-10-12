@@ -1,0 +1,128 @@
+@page "/Shiko/{id:int}"
+@model VideoUploadingProject.Pages.Lectures.WatchModel
+@{
+    ViewData["Title"] = Model.Lecture?.Title ?? "Ligjërata";
+    var lecture = Model.Lecture;
+    var finished = lecture == null ? 0 : FinishedThrough(lecture.Stage);
+    var current = lecture?.Stage == "Converting" ? 3 : 0;
+    var playable = lecture?.Renditions.Where(r => r.Format == "mp4").OrderBy(r => r.Height).ToList() ?? new();
+    var start = playable.FirstOrDefault(r => r.Height == 720) ?? playable.LastOrDefault();
+    var webm = lecture?.Renditions.FirstOrDefault(r => r.Format == "webm");
+}
+
+<header class="top">
+    <div>
+        <p class="mark">@(lecture?.Course?.Name ?? "Ligjërata")</p>
+        <h1>@(lecture?.Title ?? "Nuk u gjet")</h1>
+    </div>
+    <nav>
+        <a href="/">Ligjëratat</a>
+        <a href="/Ngarko">Ngarko</a>
+    </nav>
+</header>
+
+<main class="wrap">
+    @if (Model.ErrorMessage != null)
+    {
+        <p class="banner">@Model.ErrorMessage</p>
+    }
+    else if (lecture != null)
+    {
+        <p class="by">@lecture.ProfessorName</p>
+        <ol class="steps" id="steps">
+            @Step(1, finished, current, "Pranon videon")
+            @Step(2, finished, current, "E ruan në Cloud Storage")
+            @Step(3, finished, current, "E konverton në formate të ndryshme")
+            @Step(4, finished, current, "Krijon versionet 480p, 720p dhe 1080p")
+            @Step(5, finished, current, "E vendos në sistemin e shpërndarjes")
+            @Step(6, finished, current, "Studentët e shikojnë përmes internetit")
+        </ol>
+        <p id="detail" class="detail @(lecture.Stage == "Failed" ? "bad" : "")">@lecture.Detail</p>
+
+        @if (lecture.Stage == "Ready" && playable.Count > 0)
+        {
+            <div class="player">
+                <video id="player" controls preload="metadata" src="@start!.PlaybackUrl"></video>
+                <div class="qualities" id="qualities">
+                    @foreach (var item in playable)
+                    {
+                        <button type="button" data-src="@item.PlaybackUrl" class="@(item == start ? "on" : "")">@item.Label</button>
+                    }
+                    @if (webm != null)
+                    {
+                        <button type="button" data-src="@webm.PlaybackUrl">WebM</button>
+                    }
+                </div>
+            </div>
+        }
+    }
+</main>
+
+@section Scripts {
+    @if (lecture != null && lecture.Stage is not ("Ready" or "Failed"))
+    {
+        <script>
+            const detail = document.getElementById("detail");
+            const steps = [...document.querySelectorAll("#steps li")];
+            async function poll() {
+                const response = await fetch("/Shiko/@lecture.Id?handler=Status");
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.ready || data.failed) {
+                    location.reload();
+                    return;
+                }
+                detail.textContent = data.detail || "";
+                const finished = data.stage === "Converting" ? 2 : rank(data.stage);
+                const current = data.stage === "Converting" ? 3 : 0;
+                steps.forEach((item, index) => {
+                    const n = index + 1;
+                    item.className = n <= finished ? "done" : (n === current ? "current" : "");
+                });
+                setTimeout(poll, 2000);
+            }
+            function rank(stage) {
+                return { Received: 1, Stored: 2, RenditionsReady: 4, Distributed: 5, Ready: 6 }[stage] || 0;
+            }
+            setTimeout(poll, 2000);
+        </script>
+    }
+    @if (lecture?.Stage == "Ready")
+    {
+        <script>
+            const player = document.getElementById("player");
+            document.getElementById("qualities")?.addEventListener("click", (event) => {
+                const button = event.target.closest("button");
+                if (!button) return;
+                const time = player.currentTime;
+                const playing = !player.paused;
+                player.src = button.dataset.src;
+                player.addEventListener("loadedmetadata", () => {
+                    player.currentTime = Math.min(time, player.duration || time);
+                    if (playing) player.play();
+                }, { once: true });
+                document.querySelectorAll("#qualities button").forEach(b => b.classList.remove("on"));
+                button.classList.add("on");
+            });
+        </script>
+    }
+}
+
+@functions {
+    static int FinishedThrough(string stage) => stage switch
+    {
+        "Received" => 1,
+        "Stored" => 2,
+        "Converting" => 2,
+        "RenditionsReady" => 4,
+        "Distributed" => 5,
+        "Ready" => 6,
+        _ => 0
+    };
+
+    Microsoft.AspNetCore.Html.IHtmlContent Step(int n, int finished, int current, string text)
+    {
+        var css = n <= finished ? "done" : n == current ? "current" : "";
+        return Html.Raw($"""<li class="{css}">{n}. {text}</li>""");
+    }
+}

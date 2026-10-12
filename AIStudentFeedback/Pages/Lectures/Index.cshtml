@@ -1,0 +1,63 @@
+@page "/"
+@model VideoUploadingProject.Pages.Lectures.IndexModel
+@{
+    ViewData["Title"] = "Ligjërata online";
+}
+
+<header class="top">
+    <div>
+        <p class="mark">Universiteti</p>
+        <h1>Ligjërata online</h1>
+    </div>
+    <nav>
+        <a class="active" href="/">Ligjëratat</a>
+        <a href="/Ngarko">Ngarko</a>
+    </nav>
+</header>
+
+<main class="wrap">
+    @if (Model.ErrorMessage != null)
+    {
+        <p class="banner">@Model.ErrorMessage</p>
+    }
+
+    <ol class="strip">
+        <li>Pranon videon</li>
+        <li>E ruan në Cloud Storage</li>
+        <li>E konverton në formate</li>
+        <li>480p, 720p, 1080p</li>
+        <li>E shpërndan</li>
+        <li>Studentët e shikojnë</li>
+    </ol>
+
+    @if (Model.ErrorMessage == null && Model.Lectures.Count == 0)
+    {
+        <section class="empty">
+            <h2>Ende nuk ka ligjërata</h2>
+            <p>Profesori e ngarkon videon te faqja Ngarko. Pasi sistemi të krijojë versionet, ajo shfaqet këtu.</p>
+            <a class="button" href="/Ngarko">Ngarko një ligjëratë</a>
+        </section>
+    }
+
+    <div class="grid">
+        @foreach (var lecture in Model.Lectures)
+        {
+            <a class="card" href="/Shiko/@lecture.Id">
+                <span class="badge @lecture.Stage.ToLowerInvariant()">@Label(lecture.Stage)</span>
+                <h2>@lecture.Title</h2>
+                <p>@lecture.Course?.Name · @lecture.ProfessorName</p>
+            </a>
+        }
+    </div>
+</main>
+
+@functions {
+    static string Label(string stage) => stage switch
+    {
+        "Ready" => "Gati",
+        "Failed" => "Dështoi",
+        "Converting" => "Po konvertohet",
+        "Distributed" => "Po shpërndahet",
+        _ => "Duke u përgatitur"
+    };
+}

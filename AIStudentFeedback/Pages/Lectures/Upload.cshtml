@@ -1,0 +1,45 @@
+@page "/Ngarko"
+@model VideoUploadingProject.Pages.Lectures.UploadModel
+@{
+    ViewData["Title"] = "Ngarko ligjëratë";
+}
+
+<header class="top">
+    <div>
+        <p class="mark">Profesori</p>
+        <h1>Ngarko ligjëratën</h1>
+    </div>
+    <nav>
+        <a href="/">Ligjëratat</a>
+        <a class="active" href="/Ngarko">Ngarko</a>
+    </nav>
+</header>
+
+<main class="wrap narrow">
+    @if (Model.ErrorMessage != null)
+    {
+        <p class="banner">@Model.ErrorMessage</p>
+    }
+
+    <form method="post" enctype="multipart/form-data" class="panel">
+        <label>
+            Lënda
+            <select asp-for="CourseId" asp-items="Model.Courses"></select>
+        </label>
+        <label>
+            Titulli
+            <input asp-for="Title" maxlength="160" placeholder="Java 3. Virtualizimi" />
+        </label>
+        <label>
+            Profesori
+            <input asp-for="ProfessorName" maxlength="120" placeholder="Emri dhe mbiemri" />
+        </label>
+        <label>
+            Videoja
+            <input asp-for="Video" type="file" accept="video/mp4,video/webm,video/quicktime,video/*" />
+        </label>
+        <div asp-validation-summary="All" class="banner"></div>
+        <button type="submit">Ngarko dhe përpuno</button>
+        <p class="hint">Derisa të shkruajë Gati, mos e mbyll programin. Videoja mund të jetë deri në 500 MB.</p>
+    </form>
+</main>
